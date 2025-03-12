@@ -1,6 +1,6 @@
 <script setup>
 import { useScale } from '@composables/useScale.js';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 
 const {
   baseSize,
@@ -14,13 +14,58 @@ const {
   scaleFactor,
 } = useScale();
 
+const templates = [
+  { name: 'Small Template', size: 75 },
+  { name: 'Large Template', size: 125 },
+];
+
+const selectedTemplate = ref(templates[0].size);
+
+watch(selectedTemplate, (newSize) => {
+  templateSize.value = newSize;
+});
+
+const regimentRef = ref(null);
+const regimentRect = ref({ x: 0, y: 0 });
+
+const updateRegimentRect = () => {
+  if (regimentRef.value) {
+    const rect = regimentRef.value.getBoundingClientRect();
+    regimentRect.value = {
+      x: rect.left - battlefieldRect.value.x,
+      y: rect.top - battlefieldRect.value.y,
+    };
+  }
+};
+
+const battlefieldRef = ref(null);
+const battlefieldRect = ref({ x: 0, y: 0 });
+
+// Update rect on mount or when needed
+const updateBattlefieldRect = () => {
+  if (battlefieldRef.value) {
+    battlefieldRect.value = battlefieldRef.value.getBoundingClientRect();
+  }
+};
+
+onMounted(() => {
+  updateBattlefieldRect();
+  updateRegimentRect();
+  window.addEventListener('resize', () => {
+    updateBattlefieldRect();
+    updateRegimentRect();
+  });
+});
 // Array of bases with their positions
 const bases = computed(() => {
   const arr = [];
+  const regimentOffsetX = regimentRect.value.x;
+  const regimentOffsetY = regimentRect.value.y;
+
   for (let row = 0; row < rows.value; row++) {
     for (let col = 0; col < columns.value; col++) {
-      const x = col * baseSizePx.value + baseSizePx.value / 2;
-      const y = row * baseSizePx.value + baseSizePx.value / 2;
+      const x = regimentOffsetX + col * baseSizePx.value + baseSizePx.value / 2;
+      const y = regimentOffsetY + row * baseSizePx.value + baseSizePx.value / 2;
       arr.push({ x, y, row, col });
     }
   }
@@ -92,8 +137,15 @@ let offset = { x: 0, y: 0 };
 // Start dragging when mousedown on the template
 const onMouseDown = (event) => {
   isDragging = true;
-  offset.x = event.clientX - templatePosition.value.x;
-  offset.y = event.clientY - templatePosition.value.y;
+
+  updateBattlefieldRect();
+  updateRegimentRect();
+
+  const mouseX = event.clientX - battlefieldRect.value.x;
+  const mouseY = event.clientY - battlefieldRect.value.y;
+
+  offset.x = mouseX - templatePosition.value.x;
+  offset.y = mouseY - templatePosition.value.y;
 
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
@@ -102,8 +154,11 @@ const onMouseDown = (event) => {
 const onMouseMove = (event) => {
   if (!isDragging) return;
 
-  templatePosition.value.x = event.clientX - offset.x;
-  templatePosition.value.y = event.clientY - offset.y;
+  const mouseX = event.clientX - battlefieldRect.value.x;
+  const mouseY = event.clientY - battlefieldRect.value.y;
+
+  templatePosition.value.x = mouseX - offset.x;
+  templatePosition.value.y = mouseY - offset.y;
 };
 
 const onMouseUp = () => {
@@ -133,12 +188,14 @@ const onMouseUp = () => {
       <input type="number" v-model="columns" />
     </label>
 
-    <!-- <div>
-      <p>Base size: {{ baseSizePx }} px</p>
-      <p>Regiment width: {{ regimentWidthPx }} px</p>
-      <p>Regiment height: {{ regimentHeightPx }} px</p>
-      <p>Template diameter: {{ templateSizePx }} px</p>
-    </div> -->
+    <div class="template-selector">
+      <h3>Select Template</h3>
+      <label v-for="option in templates" :key="option.size">
+        <input type="radio" :value="option.size" v-model="selectedTemplate" />
+        {{ option.name }} ({{ option.size }}mm)
+      </label>
+    </div>
+
     <section class="impact-results">
       <p>Total hits: {{ impactSummary.totals }}</p>
       <p>Partial hits: {{ impactSummary.partials }}</p>
@@ -147,6 +204,7 @@ const onMouseUp = () => {
   <div ref="battlefieldRef" class="battlefield">
     <!-- Regiment grid -->
     <div
+      ref="regimentRef"
       class="regiment"
       :style="{
         gridTemplateRows: `repeat(${rows}, ${baseSizePx}px)`,
@@ -244,5 +302,14 @@ const onMouseUp = () => {
 
 .impact-partial {
   background-color: rgba(255, 255, 0, 0.8); /* Yellow */
+}
+
+.template-selector {
+  margin: 1rem 0;
+}
+
+.template-selector label {
+  display: block;
+  margin-bottom: 0.5rem;
 }
 </style>
