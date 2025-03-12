@@ -1,7 +1,11 @@
 <script setup>
-import { useScale } from '@composables/useScale.js';
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 
+import { useScale } from '@composables/useScale.js';
+import { useDrag } from '@composables/useDrag.js';
+import { useImpactCalculator } from '@composables/useImpactCalculator.js';
+
+// Escala general del sistema
 const {
   baseSize,
   rows,
@@ -11,7 +15,6 @@ const {
   regimentHeightPx,
   templateSizePx,
   templateSize,
-  scaleFactor,
 } = useScale();
 
 const templates = [
@@ -19,14 +22,19 @@ const templates = [
   { name: 'Large Template', size: 125 },
 ];
 
-const selectedTemplate = ref(templates[0].size);
-
-watch(selectedTemplate, (newSize) => {
-  templateSize.value = newSize;
-});
+// Refs de los contenedores
+const battlefieldRef = ref(null);
+const battlefieldRect = ref({ x: 0, y: 0 });
 
 const regimentRef = ref(null);
 const regimentRect = ref({ x: 0, y: 0 });
+
+// Funciones de actualización de rects
+const updateBattlefieldRect = () => {
+  if (battlefieldRef.value) {
+    battlefieldRect.value = battlefieldRef.value.getBoundingClientRect();
+  }
+};
 
 const updateRegimentRect = () => {
   if (regimentRef.value) {
@@ -38,25 +46,17 @@ const updateRegimentRect = () => {
   }
 };
 
-const battlefieldRef = ref(null);
-const battlefieldRect = ref({ x: 0, y: 0 });
-
-// Update rect on mount or when needed
-const updateBattlefieldRect = () => {
-  if (battlefieldRef.value) {
-    battlefieldRect.value = battlefieldRef.value.getBoundingClientRect();
-  }
-};
-
 onMounted(() => {
   updateBattlefieldRect();
   updateRegimentRect();
+
   window.addEventListener('resize', () => {
     updateBattlefieldRect();
     updateRegimentRect();
   });
 });
-// Array of bases with their positions
+
+// Bases con posiciones absolutas relativas al battlefield
 const bases = computed(() => {
   const arr = [];
   const regimentOffsetX = regimentRect.value.x;
@@ -72,121 +72,44 @@ const bases = computed(() => {
   return arr;
 });
 
-const calculateImpacts = () => {
-  const centerX = templatePosition.value.x;
-  const centerY = templatePosition.value.y;
-  const radius = templateSizePx.value / 2;
+// Drag logic
+const { position: templatePosition, onMouseDown } = useDrag(battlefieldRef, updateRegimentRect);
 
-  const impactedBases = [];
+// Impact calculation
+const { impactedBases, impactSummary } = useImpactCalculator(
+  bases,
+  templatePosition,
+  templateSizePx,
+  baseSizePx,
+);
 
-  bases.value.forEach((base) => {
-    const halfBase = baseSizePx.value / 2;
+// Template selection logic
+const selectedTemplate = ref(templates[0].size);
 
-    // Get corner coordinates
-    const corners = [
-      { x: base.x - halfBase, y: base.y - halfBase }, // top-left
-      { x: base.x + halfBase, y: base.y - halfBase }, // top-right
-      { x: base.x - halfBase, y: base.y + halfBase }, // bottom-left
-      { x: base.x + halfBase, y: base.y + halfBase }, // bottom-right
-    ];
-
-    // Check how many corners are inside the template circle
-    const cornersInside = corners.filter((corner) => {
-      const dx = centerX - corner.x;
-      const dy = centerY - corner.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      return distance <= radius;
-    }).length;
-
-    let impactType = 'none';
-
-    if (cornersInside === 4) {
-      impactType = 'total'; // All corners inside
-    } else if (cornersInside > 0) {
-      impactType = 'partial'; // Some corners inside
-    }
-
-    impactedBases.push({
-      ...base,
-      impactType,
-    });
-  });
-
-  return impactedBases;
-};
-
-const impactedBases = computed(() => calculateImpacts());
-
-const impactSummary = computed(() => {
-  const totals = impactedBases.value.filter((b) => b.impactType === 'total').length;
-  const partials = impactedBases.value.filter((b) => b.impactType === 'partial').length;
-  return {
-    totals,
-    partials,
-  };
+watch(selectedTemplate, (newSize) => {
+  templateSize.value = newSize;
 });
-// Template position in px (initially centered over the regiment)
-const templatePosition = ref({
-  x: 50, // arbitrary initial position
-  y: 50,
-});
-
-let isDragging = false;
-let offset = { x: 0, y: 0 };
-
-// Start dragging when mousedown on the template
-const onMouseDown = (event) => {
-  isDragging = true;
-
-  updateBattlefieldRect();
-  updateRegimentRect();
-
-  const mouseX = event.clientX - battlefieldRect.value.x;
-  const mouseY = event.clientY - battlefieldRect.value.y;
-
-  offset.x = mouseX - templatePosition.value.x;
-  offset.y = mouseY - templatePosition.value.y;
-
-  window.addEventListener('mousemove', onMouseMove);
-  window.addEventListener('mouseup', onMouseUp);
-};
-
-const onMouseMove = (event) => {
-  if (!isDragging) return;
-
-  const mouseX = event.clientX - battlefieldRect.value.x;
-  const mouseY = event.clientY - battlefieldRect.value.y;
-
-  templatePosition.value.x = mouseX - offset.x;
-  templatePosition.value.y = mouseY - offset.y;
-};
-
-const onMouseUp = () => {
-  isDragging = false;
-
-  window.removeEventListener('mousemove', onMouseMove);
-  window.removeEventListener('mouseup', onMouseUp);
-};
 </script>
 
 <template>
   <div class="config-panel">
     <h2>Regiment Configuration</h2>
+    <div class="config-panel__inputs">
+      <label>
+        Base size (mm):
+        <input type="number" v-model="baseSize" />
+      </label>
 
-    <label>
-      Base size (mm):
-      <input type="number" v-model="baseSize" />
-    </label>
+      <label>
+        Rows:
+        <input type="number" v-model="rows" />
+      </label>
 
-    <label>
-      Rows:
-      <input type="number" v-model="rows" />
-    </label>
-
-    <label>
-      Columns:
-      <input type="number" v-model="columns" />
-    </label>
+      <label>
+        Columns:
+        <input type="number" v-model="columns" />
+      </label>
+    </div>
 
     <div class="template-selector">
       <h3>Select Template</h3>
@@ -245,6 +168,12 @@ const onMouseUp = () => {
 <style scoped>
 .config-panel {
   margin-bottom: 1rem;
+}
+
+.config-panel__inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .battlefield {

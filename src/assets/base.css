@@ -148,6 +148,11 @@
     font-weight: 700;
   }
 
+  h2,
+  h3 {
+    margin-bottom: 8px;
+  }
+
   a:hover,
   a:focus-visible {
     color: var(--text-brand-light);
@@ -174,7 +179,7 @@ body {
     background-color 0.2s ease-in-out,
     color 0.2s ease-in-out;
 }
-/* Modo oscuro */
+
 body[theme='dark'] {
   background-color: var(--background-dark);
   color: var(--text-high-contrast);
