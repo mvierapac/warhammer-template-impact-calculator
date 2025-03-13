@@ -1,7 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 
 export function useDrag(battlefieldRef, updateRectsCallback) {
-  const position = ref({ x: 50, y: 50 });
+  const position = ref({ x: 50, y: 150 });
   let isDragging = false;
   let offset = { x: 0, y: 0 };
   const battlefieldRect = ref({ x: 0, y: 0 });
@@ -80,15 +80,20 @@ export function useDrag(battlefieldRef, updateRectsCallback) {
   };
 
   onMounted(() => {
+    startDrag();
+    endDrag();
     window.addEventListener('resize', updateBattlefieldRect);
+    window.addEventListener('scroll', updateBattlefieldRect);
   });
 
   onUnmounted(() => {
     window.removeEventListener('resize', updateBattlefieldRect);
+    window.removeEventListener('scroll', updateBattlefieldRect);
   });
 
   return {
     position,
+    battlefieldRect,
     onMouseDown,
     onTouchStart,
   };

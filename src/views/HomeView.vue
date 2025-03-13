@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, computed, nextTick } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue';
 
 import { useScale } from '@composables/useScale.js';
 import { useDrag } from '@composables/useDrag.js';
@@ -25,17 +25,9 @@ const templates = [
 
 // Refs
 const battlefieldRef = ref(null);
-const battlefieldRect = ref({ x: 0, y: 0 });
 
 const regimentRef = ref(null);
 const regimentRect = ref({ x: 0, y: 0 });
-
-// rects updates
-const updateBattlefieldRect = () => {
-  if (battlefieldRef.value) {
-    battlefieldRect.value = battlefieldRef.value.getBoundingClientRect();
-  }
-};
 
 const updateRegimentRect = () => {
   if (regimentRef.value) {
@@ -48,17 +40,21 @@ const updateRegimentRect = () => {
 };
 
 onMounted(async () => {
-  await nextTick();
   handleResize();
-  updateBattlefieldRect();
   updateRegimentRect();
-
   window.addEventListener('resize', handleResize);
   window.addEventListener('resize', async () => {
     await nextTick();
-    updateBattlefieldRect();
     updateRegimentRect();
   });
+  window.addEventListener('scroll', async () => {
+    await nextTick();
+    updateRegimentRect();
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', updateRegimentRect);
 });
 
 const handleResize = () => {
@@ -91,6 +87,7 @@ const bases = computed(() => {
 // Drag logic
 const {
   position: templatePosition,
+  battlefieldRect,
   onMouseDown,
   onTouchStart,
 } = useDrag(battlefieldRef, updateRegimentRect);
@@ -112,20 +109,26 @@ watch(selectedTemplate, (newSize) => {
 
 const baseSizes = [20, 25];
 
-const validateRows = () => {
-  if (rows.value < 1) rows.value = 1;
-  if (rows.value > 8) rows.value = 8;
+const increaseRows = () => {
+  if (rows.value < 6) rows.value++;
 };
 
-const validateColumns = () => {
-  if (columns.value < 1) columns.value = 1;
-  if (columns.value > 7) columns.value = 7;
+const decreaseRows = () => {
+  if (rows.value > 1) rows.value--;
+};
+
+const increaseColumns = () => {
+  if (columns.value < 6) columns.value++;
+};
+
+const decreaseColumns = () => {
+  if (columns.value > 1) columns.value--;
 };
 </script>
 
 <template>
   <div class="config-panel">
-    <h2>Regiment Configuration</h2>
+    <h3>Regiment Configuration</h3>
     <div class="config-panel__inputs">
       <div class="input-row">
         <label>
@@ -135,17 +138,15 @@ const validateColumns = () => {
           </select>
         </label>
       </div>
-
       <div class="input-row">
-        <label>
-          Rows:
-          <input type="number" v-model.number="rows" min="1" max="8" @change="validateRows" />
-        </label>
-
-        <label>
-          Columns:
-          <input type="number" v-model.number="columns" min="1" max="7" @change="validateColumns" />
-        </label>
+        <label> Rows: {{ rows }} </label>
+        <button class="btn-config-regiment" @click="decreaseRows()">➖</button>
+        <button class="btn-config-regiment" @click="increaseRows()">➕</button>
+      </div>
+      <div class="input-row">
+        <label> Columns: {{ columns }} </label>
+        <button class="btn-config-regiment" @click="decreaseColumns()">➖</button>
+        <button class="btn-config-regiment" @click="increaseColumns()">➕</button>
       </div>
     </div>
 
@@ -158,8 +159,8 @@ const validateColumns = () => {
     </div>
 
     <section class="impact-results">
-      <p>Total hits: {{ impactSummary.totals }}</p>
-      <p>Partial hits: {{ impactSummary.partials }}</p>
+      <p><b>Total hits:</b> {{ impactSummary.totals }}</p>
+      <p><b>Partial hits:</b>{{ impactSummary.partials }}</p>
     </section>
   </div>
   <div ref="battlefieldRef" class="battlefield">
@@ -217,6 +218,7 @@ const validateColumns = () => {
 
 .input-row {
   display: flex;
+  align-items: center;
   gap: 1rem;
 }
 
@@ -285,5 +287,11 @@ const validateColumns = () => {
   display: block;
   max-width: fit-content;
   margin-bottom: 0.5rem;
+}
+
+.btn-config-regiment {
+  font-size: 1rem;
+  width: 3rem;
+  line-height: 1.5rem;
 }
 </style>
