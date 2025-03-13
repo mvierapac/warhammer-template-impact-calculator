@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue';
+import { ref, watch, onMounted, computed, nextTick } from 'vue';
 
 import { useScale } from '@composables/useScale.js';
 import { useDrag } from '@composables/useDrag.js';
@@ -47,13 +47,15 @@ const updateRegimentRect = () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
+  await nextTick();
   handleResize();
   updateBattlefieldRect();
   updateRegimentRect();
 
   window.addEventListener('resize', handleResize);
-  window.addEventListener('resize', () => {
+  window.addEventListener('resize', async () => {
+    await nextTick();
     updateBattlefieldRect();
     updateRegimentRect();
   });
