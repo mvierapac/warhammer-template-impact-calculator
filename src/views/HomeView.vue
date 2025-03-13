@@ -73,7 +73,6 @@ const handleResize = () => {
   }
 };
 
-// Bases con posiciones absolutas relativas al battlefield
 const bases = computed(() => {
   const arr = [];
   const regimentOffsetX = regimentRect.value.x;
