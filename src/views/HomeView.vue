@@ -5,7 +5,7 @@ import { useScale } from '@composables/useScale.js';
 import { useDrag } from '@composables/useDrag.js';
 import { useImpactCalculator } from '@composables/useImpactCalculator.js';
 
-// Escala general del sistema
+// System scales
 const {
   baseSize,
   rows,
@@ -15,6 +15,7 @@ const {
   regimentHeightPx,
   templateSizePx,
   templateSize,
+  scaleFactor,
 } = useScale();
 
 const templates = [
@@ -22,14 +23,14 @@ const templates = [
   { name: 'Large Template', size: 125 },
 ];
 
-// Refs de los contenedores
+// Refs
 const battlefieldRef = ref(null);
 const battlefieldRect = ref({ x: 0, y: 0 });
 
 const regimentRef = ref(null);
 const regimentRect = ref({ x: 0, y: 0 });
 
-// Funciones de actualización de rects
+// rects updates
 const updateBattlefieldRect = () => {
   if (battlefieldRef.value) {
     battlefieldRect.value = battlefieldRef.value.getBoundingClientRect();
@@ -47,14 +48,28 @@ const updateRegimentRect = () => {
 };
 
 onMounted(() => {
+  handleResize();
   updateBattlefieldRect();
   updateRegimentRect();
 
+  window.addEventListener('resize', handleResize);
   window.addEventListener('resize', () => {
     updateBattlefieldRect();
     updateRegimentRect();
   });
 });
+
+const handleResize = () => {
+  const screenWidth = window.innerWidth;
+
+  if (screenWidth <= 600) {
+    scaleFactor.value = 2.5;
+  } else if (screenWidth <= 900) {
+    scaleFactor.value = 3;
+  } else {
+    scaleFactor.value = 4;
+  }
+};
 
 // Bases con posiciones absolutas relativas al battlefield
 const bases = computed(() => {
@@ -73,7 +88,11 @@ const bases = computed(() => {
 });
 
 // Drag logic
-const { position: templatePosition, onMouseDown } = useDrag(battlefieldRef, updateRegimentRect);
+const {
+  position: templatePosition,
+  onMouseDown,
+  onTouchStart,
+} = useDrag(battlefieldRef, updateRegimentRect);
 
 // Impact calculation
 const { impactedBases, impactSummary } = useImpactCalculator(
@@ -89,26 +108,44 @@ const selectedTemplate = ref(templates[0].size);
 watch(selectedTemplate, (newSize) => {
   templateSize.value = newSize;
 });
+
+const baseSizes = [20, 25];
+
+const validateRows = () => {
+  if (rows.value < 1) rows.value = 1;
+  if (rows.value > 8) rows.value = 8;
+};
+
+const validateColumns = () => {
+  if (columns.value < 1) columns.value = 1;
+  if (columns.value > 7) columns.value = 7;
+};
 </script>
 
 <template>
   <div class="config-panel">
     <h2>Regiment Configuration</h2>
     <div class="config-panel__inputs">
-      <label>
-        Base size (mm):
-        <input type="number" v-model="baseSize" />
-      </label>
+      <div class="input-row">
+        <label>
+          Base size (mm):
+          <select v-model="baseSize">
+            <option v-for="size in baseSizes" :key="size" :value="size">{{ size }} mm</option>
+          </select>
+        </label>
+      </div>
 
-      <label>
-        Rows:
-        <input type="number" v-model="rows" />
-      </label>
+      <div class="input-row">
+        <label>
+          Rows:
+          <input type="number" v-model.number="rows" min="1" max="8" @change="validateRows" />
+        </label>
 
-      <label>
-        Columns:
-        <input type="number" v-model="columns" />
-      </label>
+        <label>
+          Columns:
+          <input type="number" v-model.number="columns" min="1" max="7" @change="validateColumns" />
+        </label>
+      </div>
     </div>
 
     <div class="template-selector">
@@ -159,6 +196,7 @@ watch(selectedTemplate, (newSize) => {
         top: `${templatePosition.y - templateSizePx / 2}px`,
       }"
       @mousedown="onMouseDown"
+      @touchstart.prevent="onTouchStart"
     >
       <div class="center-marker"></div>
     </div>
@@ -172,8 +210,13 @@ watch(selectedTemplate, (newSize) => {
 
 .config-panel__inputs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.input-row {
+  display: flex;
+  gap: 1rem;
 }
 
 .battlefield {
@@ -226,11 +269,11 @@ watch(selectedTemplate, (newSize) => {
 }
 
 .impact-total {
-  background-color: rgba(255, 0, 0, 0.8); /* Red */
+  background-color: rgba(255, 0, 0, 0.8);
 }
 
 .impact-partial {
-  background-color: rgba(255, 255, 0, 0.8); /* Yellow */
+  background-color: rgba(255, 255, 0, 0.8);
 }
 
 .template-selector {
@@ -239,6 +282,7 @@ watch(selectedTemplate, (newSize) => {
 
 .template-selector label {
   display: block;
+  max-width: fit-content;
   margin-bottom: 0.5rem;
 }
 </style>
