@@ -78,13 +78,10 @@
     --clr-black: hsl(0, 0%, 13%);
     --clr-brown-500: hsl(28, 43%, 28%);
     --color-gray-200: hsl(0, 0%, 94%);
-    --clr-red-300: hsl(354, 100%, 90%);
-    --clr-red-400: hsl(0, 85%, 76%);
-    --clr-red-500: hsl(0, 100%, 30%);
+    --clr-red-500: hsl(0, 87%, 38%);
     --clr-orange-500: hsl(9, 100%, 64%);
     --clr-beige-500: hsl(26, 14%, 90%);
-    --clr-blue-500: hsl(232, 100%, 28%);
-    --clr-blue-600: hsl(232, 87%, 24%);
+    --clr-yellow-500: hsl(50, 87%, 48%);
 
     --ff-heading: 'Outfit', sans-serif;
     --ff-body: 'Fira Sans', sans-serif;
@@ -113,7 +110,6 @@
   :root {
     --text-main: var(--clr-black);
     --text-high-contrast: var(--clr-white);
-    --text-error: var(--clr-red-500);
 
     --background-main: var(--clr-beige-500);
     --background-dark: var(--clr-black);
@@ -159,9 +155,6 @@
   }
 }
 
-@layer layout {
-}
-
 @layer utilities {
   .visually-hidden {
     clip: rect(0 0 0 0);
@@ -177,16 +170,4 @@
 html,
 body {
   overflow-x: hidden;
-}
-
-body {
-  transition:
-    background-color 0.2s ease-in-out,
-    color 0.2s ease-in-out;
-}
-
-body[theme='dark'] {
-  background-color: var(--background-dark);
-  color: var(--text-high-contrast);
-  --text-error: var(--clr-red-400);
 }

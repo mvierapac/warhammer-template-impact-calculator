@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 
 import { useScale } from '@composables/useScale.js';
 import { useDrag } from '@composables/useDrag.js';
@@ -44,11 +44,9 @@ onMounted(async () => {
   updateRegimentRect();
   window.addEventListener('resize', handleResize);
   window.addEventListener('resize', async () => {
-    await nextTick();
     updateRegimentRect();
   });
   window.addEventListener('scroll', async () => {
-    await nextTick();
     updateRegimentRect();
   });
 });
@@ -272,11 +270,11 @@ const decreaseColumns = () => {
 }
 
 .impact-total {
-  background-color: rgba(255, 0, 0, 0.8);
+  background-color: var(--clr-red-500);
 }
 
 .impact-partial {
-  background-color: rgba(255, 255, 0, 0.8);
+  background-color: var(--clr-yellow-500);
 }
 
 .template-selector {
